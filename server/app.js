@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 
 
-app.get('/', 
+app.get('/', Auth.createSession, 
 (req, res) => {
   res.render('index');
 });
@@ -77,8 +77,34 @@ app.post('/links',
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.post('/signup', (req, res, next) => {
+  models.Users.get({username: req.body.username})
+    .then(data => {
+      if (!data) {
+        models.Users.create(req.body)
+          .then(login => {
+            res.status(201).redirect('/');
+          });      
+      } else {
+        res.status(403).redirect('/signup');
+      }
+    });
+});
 
-
+app.post('/login', (req, res, next) => {
+  models.Users.get({username: req.body.username})
+    .then(data => {
+      if (!data) {
+        res.status(403).redirect('/login');
+      } else if (models.Users.compare(req.body.password, data.password, data.salt)) {
+        // Auth.createSession();
+        res.status(201).redirect('/');
+        
+      } else {
+        res.status(403).redirect('/login');
+      }
+    });
+});
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail
