@@ -5,6 +5,8 @@ const partials = require('express-partials');
 const bodyParser = require('body-parser');
 const Auth = require('./middleware/auth');
 const models = require('./models');
+const cookieParser = require('./middleware/cookieParser.js');
+
 
 const app = express();
 
@@ -83,12 +85,19 @@ app.post('/signup', (req, res, next) => {
       if (!data) {
         models.Users.create(req.body)
           .then(login => {
-            res.status(201).redirect('/');
+            req.session = {userId: login.insertId, username: req.body.username};
+            next();
           });      
       } else {
         res.status(403).redirect('/signup');
       }
     });
+});
+
+app.post('/signup', Auth.createSession, (req, res, next) => {
+  models.Sessions.update({hash: req.session.hash}, {userId: req.session.userId});
+  
+  res.status(201).redirect('/');
 });
 
 app.post('/login', (req, res, next) => {
@@ -97,7 +106,8 @@ app.post('/login', (req, res, next) => {
       if (!data) {
         res.status(403).redirect('/login');
       } else if (models.Users.compare(req.body.password, data.password, data.salt)) {
-        // Auth.createSession();
+        // Auth.createSession(req, res, next);
+        
         res.status(201).redirect('/');
         
       } else {
@@ -105,6 +115,14 @@ app.post('/login', (req, res, next) => {
       }
     });
 });
+
+app.get('/logout', cookieParser, (req, res, next) => {
+  models.Sessions.delete({hash: req.cookies.shortlyid})
+    .then(data => {
+      res.status(201).redirect('/');
+    });
+});
+
 
 /************************************************************/
 // Handle the code parameter route last - if all other routes fail

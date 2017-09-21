@@ -5,17 +5,24 @@ const cookieParser = require('./cookieParser.js');
 module.exports.createSession = (req, res, next) => {
   var session = {};
   if (req.cookies === undefined || Object.keys(req.cookies).length === 0) {
+
     models.Sessions.create()
       .then((data) => {
         return models.Sessions.get({id: data.insertId});      
       }).then(data => {
         // console.log(req.jar, res.jar);
         session.hash = data.hash;
-        req.session = session;
+        if (req.session) {
+          req.session.hash = data.hash;
+        } else {
+          req.session = session;
+        }
         res.cookie('shortlyid', data.hash);
+        
         next();
       });
   } else {
+    console.log('3');
     models.Sessions.get({hash: req.cookies.shortlyid})
       .then((data) => {
         if (data) {
